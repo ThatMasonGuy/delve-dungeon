@@ -26,6 +26,8 @@ import {
   fungusLitEmbed,
   poisonTickEmbed,
   poisonCuredEmbed,
+  unequipEmbed,
+  fleeEmbed,
 } from './embeds.js';
 
 // Track players currently being processed to prevent double-actions
@@ -272,6 +274,16 @@ export async function handleGameMessage(message, client) {
       mechEmbeds.push(itemUsedEmbed(result.itemUsed.name, result.itemUsed.effects));
     }
 
+    // Unequip result
+    if (result.unequippedItem) {
+      mechEmbeds.push(unequipEmbed(result.unequippedItem));
+    }
+
+    // Flee result (only on successful flee — failed flee shows combat embed)
+    if (result.fleeSuccess) {
+      mechEmbeds.push(fleeEmbed(result.fleeOutcome));
+    }
+
     // ── Build story embeds (sent WITH narrative) ──
     const storyEmbeds = [];
 
@@ -296,11 +308,14 @@ export async function handleGameMessage(message, client) {
     const updatedRunFinal = queries.getActiveRun(player.id) || run;
     let locationLine = '';
     if (updatedRunFinal && updatedRunFinal.status === 'active') {
-      const poisonEffects = (updatedRunFinal.run_stats?.status_effects || []).filter(e => e.type === 'poison');
-      const poisonTag = poisonEffects.length > 0
-        ? ` · ☠️ Poisoned (${Math.max(...poisonEffects.map(e => e.duration))})`
-        : '';
-      locationLine = `\n-# 📍 Floor ${updatedRunFinal.current_floor} · Room ${updatedRunFinal.current_room} · ❤️ ${result.updatedPlayerHp}/${player.hp_max}${poisonTag}`;
+      const rs = updatedRunFinal.run_stats || {};
+      const poisonEffects = (rs.status_effects || []).filter(e => e.type === 'poison');
+      const tags = [];
+      if (poisonEffects.length > 0) tags.push(`☠️ Poisoned (${Math.max(...poisonEffects.map(e => e.duration))})`);
+      if (rs.torch_lit) tags.push('🔥 Torch');
+      if (rs.fungus_lit) tags.push('🍄 Fungus');
+      const tagStr = tags.length > 0 ? ` · ${tags.join(' · ')}` : '';
+      locationLine = `\n-# 📍 Floor ${updatedRunFinal.current_floor} · Room ${updatedRunFinal.current_room} · ❤️ ${result.updatedPlayerHp}/${player.hp_max}${tagStr}`;
     }
 
     // 1) Send mechanical results as reply (dice, combat, loot, xp)

@@ -206,11 +206,11 @@ function spawnEnemies(enemyRules, floorNumber, difficultyTier, isBossRoom) {
     return enemies;
   }
 
-  // Regular room: 1-3 enemies
+  // Regular room: 1-2 enemies (capped at 2 to keep encounters manageable)
   const regularRules = enemyRules.filter(r => r.is_boss === 0 && r.spawn_weight > 0);
   if (regularRules.length === 0) return enemies;
 
-  const enemyCount = 1 + Math.floor(Math.random() * Math.min(3, floorNumber + 1));
+  const enemyCount = 1 + Math.floor(Math.random() * Math.min(2, floorNumber));
 
   for (let i = 0; i < enemyCount; i++) {
     const rule = weightedRandom(regularRules.map(r => ({ weight: r.spawn_weight, item: r })));
@@ -230,7 +230,7 @@ function createEnemyInstance(rule, difficultyTier, isBoss) {
     scaling = typeof rule.stat_scaling === 'string' ? JSON.parse(rule.stat_scaling) : rule.stat_scaling;
   } catch { scaling = { hp_per_tier: 1.3, damage_per_tier: 1.15, armor_per_tier: 1.1 }; }
 
-  const tierMultiplier = Math.max(1, difficultyTier - 1); // Tier 1 = no scaling
+  const tierMultiplier = Math.max(0, difficultyTier - 1); // Tier 1 = base stats (no scaling)
 
   let abilities;
   try {

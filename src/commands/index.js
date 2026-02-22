@@ -18,8 +18,9 @@ import hub from './hub.js';
 import map from './map.js';
 import shop from './shop.js';
 import sell from './sell.js';
+import help from './help.js';
 
-const commands = [characters, dungeons, delve, stats, inventory, equip, abandon, status, hub, map, shop, sell];
+const commands = [characters, dungeons, delve, stats, inventory, equip, abandon, status, hub, map, shop, sell, help];
 
 /**
  * Load commands into the client's command collection.
