@@ -14,6 +14,7 @@ An AI-powered dungeon crawler Discord bot where players explore procedurally gen
 - **11 Damage Types** — Slashing, piercing, blunt, fire, ice, arcane, poison, radiant, necrotic, psychic, thunder
 - **Status Effects** — Burn, freeze, poison, stun, and more
 - **Slash Commands** — Structured commands for character management, equipment, shopping, and maps
+- **In-Game Help** — `/help [topic]` works directly in the game channel for quick rule lookups mid-run
 - **Data-Driven Content** — All enemies, items, dungeons, and loot rules live in a SQLite database for easy customization
 
 ---
@@ -162,12 +163,13 @@ The bot will:
 ### Tips
 
 - Check your current state with `/status`
-- View your character sheet with `/stats`
+- View your character sheet with `/stats` — skill bonuses are shown next to each level
 - Manage items with `/inventory` and `/equip`
 - Use `/map` to see the current floor layout
 - Rest rooms restore HP — seek them out when low
 - Carry a torch for perception bonuses in dark areas
-- Hidden loot requires a successful perception check to find
+- Not every room has loot — searching is worth doing, but don't expect a reward every time
+- Type `/help [topic]` anywhere in the game channel for quick rule lookups (e.g. `/help flee`, `/help skills`)
 
 ---
 
@@ -179,13 +181,16 @@ The bot will:
 | `/characters` | View and switch between your character slots (3 per user) |
 | `/delve` | Enter a dungeon (costs gold) |
 | `/status` | View current run progress, floor, and room |
-| `/stats` | View your character's stats, skills, and XP |
+| `/stats` | View your character's stats, skills, and current skill bonuses |
 | `/inventory` | Browse and manage your items |
 | `/equip [item]` | Equip or unequip an item |
 | `/shop` | Browse and buy items (unlocks after first dungeon completion) |
 | `/sell [item]` | Sell an item for gold |
 | `/map` | Display the current floor map |
 | `/abandon` | Quit the current dungeon run (no rewards) |
+| `/help [topic]` | How-to-play guide; also works as a plain message in the game channel |
+
+**Help topics:** `overview` · `commands` · `combat` · `flee` · `search` · `skills` · `items` · `dungeon`
 
 ---
 
@@ -212,15 +217,17 @@ Ten skills track XP and level independently (1–100):
 
 `melee` · `ranged` · `magic` · `stealth` · `perception` · `persuasion` · `lockpicking` · `survival` · `crafting` · `alchemy`
 
+Skills improve through use. Every 10 levels a skill gains +1 to all related dice rolls (level 10 = +1, level 20 = +2, up to +10 at level 100). Current bonuses are visible on `/stats` and called out on level-up.
+
 ### Skill Checks
 
 ```
-d20 + stat_modifier + skill_bonus  vs.  DC (Difficulty Class)
+d20 + stat_modifier + skill_bonus + item_perks  vs.  DC (Difficulty Class)
 ```
 
-- **Natural 20** — Critical success
-- **Natural 1** — Critical failure
-- Results above the DC succeed; results below fail; near-misses may produce partial outcomes
+- **Natural 20** — Critical success (automatic, regardless of total)
+- **Natural 1** — Critical failure (automatic, regardless of total)
+- Beat the DC → success; within 2 below DC → partial success; further below → failure
 
 ### Combat
 

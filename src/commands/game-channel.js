@@ -40,8 +40,8 @@ const processing = new Set();
 export async function handleGameMessage(message, client) {
   const discordId = message.author.id;
 
-  // ./help [topic] — works anywhere in the game channel, dungeon or hub
-  const helpMatch = message.content.trim().match(/^\.\/help\s*(.*)$/i);
+  // /help [topic] — works anywhere in the game channel, dungeon or hub
+  const helpMatch = message.content.trim().match(/^\/help\s*(.*)$/i);
   if (helpMatch) {
     const topic = (helpMatch[1] || '').trim();
     const embed = buildHelpEmbed(topic);

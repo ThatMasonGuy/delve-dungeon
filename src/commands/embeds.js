@@ -137,7 +137,7 @@ export function levelUpEmbed(levelUps) {
   return new EmbedBuilder()
     .setColor(hasTierUp ? C.crit : C.levelUp)
     .setDescription(`⬆️ ${lines.join('\n')}`)
-    .setFooter({ text: 'Bonus increases every 10 levels. Use ./help skills for details.' });
+    .setFooter({ text: 'Bonus increases every 10 levels. Use /help skills for details.' });
 }
 
 export function xpEmbed(xpGained) {
@@ -228,7 +228,7 @@ export function playerStatsEmbed(player, baseStats, skills, equippedItems) {
     embed.addFields({ name: 'Equipped', value: eqLines.join('\n'), inline: false });
   }
 
-  embed.setFooter({ text: 'Skill bonus (+N) adds to every dice roll for that skill. New tier every 10 levels. · ./help skills' });
+  embed.setFooter({ text: 'Skill bonus (+N) adds to every dice roll for that skill. New tier every 10 levels. · /help skills' });
 
   return embed;
 }

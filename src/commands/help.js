@@ -27,7 +27,7 @@ export const PAGES = {
     )
     .addFields(
       {
-        name: '📖 Topics — type `./help <topic>` in the game channel',
+        name: '📖 Topics — type `/help <topic>` in the game channel',
         value:
           '`overview` — This page\n' +
           '`commands` — All slash commands\n' +
@@ -39,7 +39,7 @@ export const PAGES = {
           '`dungeon` — Floors, rooms, movement',
       }
     )
-    .setFooter({ text: '/help topic:commands  |  /help topic:combat  |  ./help flee  |  etc.' }),
+    .setFooter({ text: '/help topic:commands  |  /help topic:combat  |  /help flee  |  etc.' }),
 
   commands: () => new EmbedBuilder()
     .setColor(C.purple)
@@ -111,7 +111,7 @@ export const PAGES = {
         ].join('\n'),
       },
     )
-    .setFooter({ text: 'Use ./help flee for fleeing mechanics. Use ./help skills for skill bonuses.' }),
+    .setFooter({ text: 'Use /help flee for fleeing mechanics. Use /help skills for skill bonuses.' }),
 
   flee: () => new EmbedBuilder()
     .setColor(0xf39c12)
@@ -176,7 +176,7 @@ export const PAGES = {
         value: [
           '🔥 **Torch** — +3 Perception for the entire run (light it with *"light the torch"*)',
           '🍄 **Glowing Fungus** — +1 Perception for the run (consumable)',
-          '📈 **Perception skill** — Grants a bonus every 10 levels (`./help skills`)',
+          '📈 **Perception skill** — Grants a bonus every 10 levels (`/help skills`)',
           '📊 **Wisdom modifier** — Your base Perception stat',
         ].join('\n'),
       },
