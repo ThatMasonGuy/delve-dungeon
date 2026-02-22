@@ -40,13 +40,25 @@ export async function registerCommands() {
   const commandData = commands.map(c => c.data.toJSON());
 
   try {
-    if (config.discord.guildId) {
-      // Guild-specific (instant, good for dev)
-      await rest.put(
-        Routes.applicationGuildCommands(config.discord.clientId, config.discord.guildId),
-        { body: commandData },
-      );
-      console.log(`[CMD] Registered ${commandData.length} guild commands`);
+    const guildIds = config.discord.guildIds || [];
+
+    if (guildIds.length > 0) {
+      // Guild-specific (instant, good for dev/playtesting)
+      for (const guildId of guildIds) {
+        await rest.put(
+          Routes.applicationGuildCommands(config.discord.clientId, guildId),
+          { body: commandData },
+        );
+        console.log(`[CMD] Registered ${commandData.length} guild commands for guild ${guildId}`);
+      }
+
+      if (config.discord.registerGlobalCommands) {
+        await rest.put(
+          Routes.applicationCommands(config.discord.clientId),
+          { body: commandData },
+        );
+        console.log(`[CMD] Also registered ${commandData.length} global commands`);
+      }
     } else {
       // Global (takes up to 1hr to propagate)
       await rest.put(

@@ -1,12 +1,27 @@
 import 'dotenv/config';
 
+function parseIdList(raw) {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map(v => v.trim())
+    .filter(Boolean);
+}
+
+const guildIds = parseIdList(process.env.GAME_GUILD_IDS);
+const channelIds = parseIdList(process.env.GAME_CHANNEL_IDS);
+
 export const config = {
   // Discord
   discord: {
     token: process.env.DISCORD_TOKEN,
     clientId: process.env.DISCORD_CLIENT_ID,
     guildId: process.env.GAME_GUILD_ID,
+    guildIds: guildIds.length > 0 ? guildIds : (process.env.GAME_GUILD_ID ? [process.env.GAME_GUILD_ID] : []),
     gameChannelId: process.env.GAME_CHANNEL_ID,
+    gameChannelIds: channelIds.length > 0 ? channelIds : (process.env.GAME_CHANNEL_ID ? [process.env.GAME_CHANNEL_ID] : []),
+    allowDmGameplay: process.env.ALLOW_DM_GAMEPLAY === 'true',
+    registerGlobalCommands: process.env.REGISTER_GLOBAL_COMMANDS !== 'false',
   },
 
   // OpenAI
