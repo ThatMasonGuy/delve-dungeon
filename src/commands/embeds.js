@@ -121,10 +121,23 @@ export function lootEmbed(drops, goldGained) {
 
 export function levelUpEmbed(levelUps) {
   if (levelUps.length === 0) return null;
-  const lines = levelUps.map(lu => `**${capitalize(lu.skill)}** ${lu.old_level} → **${lu.new_level}**`);
+
+  const lines = levelUps.map(lu => {
+    const newBonus = Math.floor(lu.new_level / 10);
+    const oldBonus = Math.floor((lu.old_level || 0) / 10);
+    const tierCrossed = newBonus > oldBonus;
+    const bonusNote = tierCrossed
+      ? `  🎯 **+${newBonus} to rolls** *(new tier!)*`
+      : `  (+${newBonus} to rolls)`;
+    return `**${capitalize(lu.skill)}** Lv.${lu.old_level} → **${lu.new_level}**${bonusNote}`;
+  });
+
+  const hasTierUp = levelUps.some(lu => Math.floor(lu.new_level / 10) > Math.floor((lu.old_level || 0) / 10));
+
   return new EmbedBuilder()
-    .setColor(C.levelUp)
-    .setDescription(`⬆️ ${lines.join('  ·  ')}`);
+    .setColor(hasTierUp ? C.crit : C.levelUp)
+    .setDescription(`⬆️ ${lines.join('\n')}`)
+    .setFooter({ text: 'Bonus increases every 10 levels. Use /help skills for details.' });
 }
 
 export function xpEmbed(xpGained) {
@@ -190,9 +203,11 @@ export function playerStatsEmbed(player, baseStats, skills, equippedItems) {
   const statLine1 = `\`STR\` **${baseStats.strength}**(${modStr(baseStats.strength)})  \`DEX\` **${baseStats.dexterity}**(${modStr(baseStats.dexterity)})  \`CON\` **${baseStats.constitution}**(${modStr(baseStats.constitution)})`;
   const statLine2 = `\`INT\` **${baseStats.intelligence}**(${modStr(baseStats.intelligence)})  \`WIS\` **${baseStats.wisdom}**(${modStr(baseStats.wisdom)})  \`CHA\` **${baseStats.charisma}**(${modStr(baseStats.charisma)})`;
 
-  const skillLines = skills.map(s =>
-    `${skillBar(s.level)} **${capitalize(s.skill_name)}** Lv.**${s.level}**`
-  );
+  const skillLines = skills.map(s => {
+    const bonus = Math.floor(s.level / 10);
+    const bonusStr = bonus > 0 ? ` **(+${bonus})**` : '';
+    return `${skillBar(s.level)} **${capitalize(s.skill_name)}** Lv.**${s.level}**${bonusStr}`;
+  });
   const mid = Math.ceil(skillLines.length / 2);
 
   const embed = new EmbedBuilder()
@@ -212,6 +227,8 @@ export function playerStatsEmbed(player, baseStats, skills, equippedItems) {
     const eqLines = equipped.map(i => `${RARITY[i.rarity] || '⚪'} ${i.item_name} *(${i.subtype})*`);
     embed.addFields({ name: 'Equipped', value: eqLines.join('\n'), inline: false });
   }
+
+  embed.setFooter({ text: 'Skill bonus (+N) adds to every dice roll for that skill. New tier every 10 levels. · /help skills' });
 
   return embed;
 }
