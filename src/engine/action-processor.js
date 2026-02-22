@@ -1196,7 +1196,7 @@ async function processFlee(result, run, player, baseStats, skills, currentRoom) 
     //   success        → 0.25x  (glancing blow)
     //   partial_success→ 0.5x  (grazing hit while fleeing)
     const oppMultiplier =
-      check.outcome === 'crit_success' ? 0.0
+      check.outcome === 'critical_success' ? 0.0
       : check.outcome === 'success' ? 0.25
       : 0.5;
 

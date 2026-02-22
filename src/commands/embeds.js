@@ -259,8 +259,16 @@ export function runStatusEmbed(run, dungeon, currentRoom, player) {
   const living = (run.room_state?.enemies || []).filter(e => !e.is_dead);
   const inCombat = run.room_state?.is_combat_active;
 
+  // Active buffs and status effects
+  const activeTags = [];
+  if (rs.torch_lit) activeTags.push('🔥 Torch (+3 Perception)');
+  if (rs.fungus_lit) activeTags.push('🍄 Fungus (+1 Perception)');
+  const poisonEffects = (rs.status_effects || []).filter(e => e.type === 'poison');
+  if (poisonEffects.length > 0) activeTags.push(`☠️ Poisoned (${Math.max(...poisonEffects.map(e => e.duration))} turns)`);
+
   let desc = `❤️ ${hpBar(player.hp_current / player.hp_max, 10)} **${player.hp_current}**/${player.hp_max}  ·  💰 **${player.gold}g**\n\n`;
   desc += `**Floor** ${run.current_floor}/${dungeon.floor_count}  ·  **Room** ${run.current_room} (${currentRoom?.type || '?'})  ·  ${inCombat ? '⚔️ Combat' : '🚶 Exploring'}\n`;
+  if (activeTags.length > 0) desc += `-# ${activeTags.join('  ·  ')}\n`;
   desc += `-# 🗡️ ${rs.damage_dealt || 0} dealt  ·  💔 ${rs.damage_taken || 0} taken  ·  ☠️ ${rs.enemies_killed || 0} kills  ·  🚪 ${rs.rooms_cleared || 0} rooms`;
 
   const embed = new EmbedBuilder()
@@ -353,6 +361,22 @@ export function poisonCuredEmbed() {
     .setDescription(`🟢 **Poison cured!** The toxins leave your body.`);
 }
 
+export function unequipEmbed(itemName) {
+  return new EmbedBuilder()
+    .setColor(0x95a5a6)
+    .setDescription(`🔽 **${itemName}** unequipped`);
+}
+
+export function fleeEmbed(outcome) {
+  const outcomes = {
+    critical_success: { color: 0x43b581, text: '🌟 **Clean escape!** You slip away without a scratch.' },
+    success:          { color: 0x4a9e6c, text: '✅ **Escaped!** A glancing blow as you dash away.' },
+    partial:          { color: 0xf39c12, text: '⚠️ **Barely escaped.** You took a solid hit fleeing.' },
+  };
+  const { color, text } = outcomes[outcome] || outcomes.partial;
+  return new EmbedBuilder().setColor(color).setDescription(text);
+}
+
 export function dungeonCompleteEmbed(dungeon, runStats, loot, goldTotal, completionGold) {
   const rs = runStats || {};
   let desc = `*The dungeon falls silent. You emerge victorious.*\n\n` +
@@ -380,7 +404,7 @@ export function hubEmbed(player, availableDungeons) {
     .setColor(C.gold)
     .setTitle('🏠 The Hub')
     .setDescription(desc)
-    .setFooter({ text: '/characters · /dungeons · /delve · /stats · /inventory · /equip · /shop · /sell' });
+    .setFooter({ text: '/help · /characters · /dungeons · /delve · /stats · /inventory · /equip · /shop · /sell' });
 }
 
 // ════════════════════════════════════════════

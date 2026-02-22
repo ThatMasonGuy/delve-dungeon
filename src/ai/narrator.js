@@ -248,6 +248,29 @@ function buildMechanicalContext(result) {
     parts.push(`\nNO LOCKPICK: Player tried to pick a lock but has no Thieves' Picks. They need to buy some from the shop.`);
   }
 
+  // Unequip
+  if (result.unequippedItem) {
+    parts.push(`\nUNEQUIPPED: Player removed ${result.unequippedItem} and is now fighting bare-handed or with their remaining equipped weapons.`);
+  }
+  if (result.nothingToUnequip) {
+    parts.push(`\nUNEQUIP FAILED: Player tried to unequip something but had nothing to remove.`);
+  }
+
+  // Flee outcome
+  if (result.fleeSuccess) {
+    const fleeDesc = {
+      critical_success: 'CRITICAL SUCCESS — clean escape. No damage taken. Narrate a daring, flawless getaway.',
+      success: 'SUCCESS — escaped but took a glancing blow as they fled.',
+      partial: 'PARTIAL SUCCESS — escaped but took a solid hit while fleeing.',
+    };
+    parts.push(`\nFLEE: ${fleeDesc[result.fleeOutcome] || 'Player fled successfully.'} Combat has ended — player is free to move.`);
+  }
+
+  // Boss room entered (first round, no enemy attack yet)
+  if (result.bossRoomEntered) {
+    parts.push(`\nBOSS ROOM ENTERED: This is the player's first action entering the boss chamber. The boss is present but has NOT attacked yet this round — enemies skipped their turn so the player acts first. Describe the chamber and the boss imposingly. Do NOT narrate any enemy attacks this turn.`);
+  }
+
   // HP changes
   if (result.hpChange !== 0) {
     parts.push(`Player HP change: ${result.hpChange > 0 ? '+' : ''}${result.hpChange} (now ${result.updatedPlayerHp})`);

@@ -26,6 +26,21 @@ export default {
       });
     }
 
+    // Block /equip inside a dungeon — gear changes must go through the engine
+    const activeRun = queries.getActiveRun(player.id);
+    if (activeRun) {
+      return interaction.reply({
+        content: [
+          '⚠️ You can\'t use `/equip` while inside a dungeon.',
+          'Tell the Dungeon Master what you want to do instead:',
+          '› *"I unequip my bow and swing at the skeleton"*',
+          '› *"I sheathe my sword"*',
+          '› *"I equip the shortsword"* *(if you found one)*',
+        ].join('\n'),
+        ephemeral: true,
+      });
+    }
+
     const itemName = interaction.options.getString('item').toLowerCase();
     const inventory = queries.getInventory(player.id);
 
