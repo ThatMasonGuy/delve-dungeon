@@ -14,6 +14,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.DirectMessages,
   ],
   partials: [Partials.Channel],
 });
@@ -51,7 +52,11 @@ async function boot() {
 
 client.once(Events.ClientReady, (c) => {
   console.log(`[DELVE] Logged in as ${c.user.tag}`);
-  console.log(`[DELVE] Watching game channel: ${config.discord.gameChannelId || 'not set'}`);
+  const channelScope = config.discord.gameChannelIds.length > 0
+    ? config.discord.gameChannelIds.join(', ')
+    : (config.discord.gameChannelId || 'all channels');
+  console.log(`[DELVE] Watching game channels: ${channelScope}`);
+  console.log(`[DELVE] DM gameplay: ${config.discord.allowDmGameplay ? 'enabled' : 'disabled'}`);
   console.log(`[DELVE] Ready.`);
 });
 
@@ -118,13 +123,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Game channel message handler — this is where natural language gameplay happens
+// Game channel/DM message handler — this is where natural language gameplay happens
 client.on(Events.MessageCreate, async (message) => {
   // Ignore bots
   if (message.author.bot) return;
 
-  // Only process messages in the game channel
-  if (config.discord.gameChannelId && message.channelId === config.discord.gameChannelId) {
+  const isDm = message.guildId == null;
+  const inAllowedChannel = config.discord.gameChannelIds.length === 0
+    ? !isDm
+    : config.discord.gameChannelIds.includes(message.channelId);
+
+  if (isDm && config.discord.allowDmGameplay) {
+    await handleGameMessage(message, client);
+    return;
+  }
+
+  if (inAllowedChannel) {
     await handleGameMessage(message, client);
   }
 });

@@ -6,7 +6,7 @@ An AI-powered dungeon crawler Discord bot where players explore procedurally gen
 
 ## Features
 
-- **Natural Language Gameplay** — Type actions freely in a designated Discord channel; the AI interprets your intent and narrates the result
+- **Natural Language Gameplay** — Type actions freely in designated Discord channels or DMs; the AI interprets your intent and narrates the result
 - **Deterministic Mechanics** — All outcomes (combat, skill checks, loot) are resolved by the game engine before the AI narrates, preventing hallucinated results
 - **D&D-Style Dice System** — d20 skill checks, stat modifiers (STR/DEX/CON/INT/WIS/CHA), critical successes and failures
 - **Procedural Dungeon Generation** — Each floor is generated fresh with randomized rooms, branches, traps, enemies, and loot
@@ -71,7 +71,8 @@ npm install
    - Add Reactions
 5. Use the generated URL to invite the bot to your server.
 6. Copy your **Application ID** (Client ID) from the General Information page.
-7. Create a dedicated text channel for freeform gameplay and copy its channel ID (enable Developer Mode in Discord settings to see IDs).
+7. Create one or more dedicated text channels for freeform gameplay and copy their channel IDs (enable Developer Mode in Discord settings to see IDs).
+8. (Optional) If you want DM playtesting, keep DMs enabled for your bot and set `ALLOW_DM_GAMEPLAY=true`.
 
 ---
 
@@ -87,8 +88,12 @@ cp .env.example .env
 |---|---|---|---|
 | `DISCORD_TOKEN` | Yes | — | Your Discord bot token |
 | `DISCORD_CLIENT_ID` | Yes | — | Your Discord application (client) ID |
-| `GAME_GUILD_ID` | No | — | Guild ID for faster slash command sync during development |
-| `GAME_CHANNEL_ID` | Yes | — | Channel ID where players type freeform actions |
+| `GAME_GUILD_ID` | No | — | Single guild ID for slash command registration (legacy/simplest) |
+| `GAME_GUILD_IDS` | No | — | Comma-separated guild IDs for multi-server slash command registration |
+| `GAME_CHANNEL_ID` | No | — | Single allowed gameplay channel ID (legacy/simplest) |
+| `GAME_CHANNEL_IDS` | No | — | Comma-separated allowed gameplay channel IDs across servers |
+| `ALLOW_DM_GAMEPLAY` | No | `false` | If `true`, users can play by DMing the bot directly |
+| `REGISTER_GLOBAL_COMMANDS` | No | `true` | If `true`, also register global slash commands in addition to guild commands (recommended) |
 | `OPENAI_API_KEY` | Yes | — | Your OpenAI API key |
 | `OPENAI_MODEL` | No | `gpt-4o` | OpenAI model to use for narration |
 | `DB_PATH` | No | `./data/adventure.db` | Path to the SQLite database file |
@@ -97,7 +102,7 @@ cp .env.example .env
 | `DEFAULT_INVENTORY_SLOTS` | No | `20` | Inventory slot count per character |
 | `GENERATE_DUNGEON_IMAGES` | No | `false` | Enable DALL-E room image generation (additional cost) |
 
-> **Tip:** Set `GAME_GUILD_ID` during development. Guild-scoped slash commands sync instantly; global commands can take up to an hour.
+> **Tip:** By default, startup now registers both guild-scoped and global commands so you do not need a second rollout step later. If you need faster iteration without touching globals, set `REGISTER_GLOBAL_COMMANDS=false`.
 
 ---
 
@@ -140,10 +145,12 @@ On startup the bot registers slash commands, connects to Discord, and is ready t
 
 ### Getting Started
 
-1. Create a character with `/create`. You'll receive a set of randomly rolled stats (3d6 each).
+1. Create a character with `/characters` by selecting an empty slot. You'll receive a set of randomly rolled stats (3d6 each).
 2. Browse available dungeons with `/dungeons`.
 3. Enter a dungeon with `/delve`. This costs a small gold entry fee.
-4. Head to the designated game channel and start typing actions.
+4. Head to any configured game channel (or DM the bot if enabled) and start typing actions.
+
+If someone DMs the bot before creating a character, Delve now replies with a quick start checklist (`/characters` → `/dungeons` → `/delve`).
 
 ### Playing
 
@@ -177,8 +184,7 @@ The bot will:
 
 | Command | Description |
 |---|---|
-| `/create` | Create a new character with rolled stats |
-| `/characters` | View and switch between your character slots (3 per user) |
+| `/characters` | Create, view, and switch between your character slots (3 per user) |
 | `/delve` | Enter a dungeon (costs gold) |
 | `/status` | View current run progress, floor, and room |
 | `/stats` | View your character's stats, skills, and current skill bonuses |

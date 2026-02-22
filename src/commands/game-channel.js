@@ -39,6 +39,7 @@ const processing = new Set();
  */
 export async function handleGameMessage(message, client) {
   const discordId = message.author.id;
+  const isDm = message.guildId == null;
 
   // /help [topic] — works anywhere in the game channel, dungeon or hub
   const helpMatch = message.content.trim().match(/^\/help\s*(.*)$/i);
@@ -54,17 +55,32 @@ export async function handleGameMessage(message, client) {
   // Check if player exists
   const player = queries.getPlayerByDiscordId(discordId);
   if (!player) {
-    // Silently ignore non-players in the game channel
+    if (isDm && message.content.trim().length > 0) {
+      await message.reply({
+        content: [
+          '👋 Welcome to **Delve**!',
+          'To get started:',
+          '1) Use `/characters` and pick an empty slot to create your character.',
+          '2) Use `/dungeons` to browse available dungeons.',
+          '3) Use `/delve` to begin a run, then type natural actions like `search room` or `attack skeleton`.',
+          'Need guidance? Type `/help` or `/help overview`.',
+        ].join('\n'),
+        allowedMentions: { repliedUser: false },
+      });
+    }
+    // Silently ignore non-players in server channels
     return;
   }
 
   // Check if player has an active run
   const run = queries.getActiveRun(player.id);
   if (!run) {
-    // Not in a dungeon — ignore or give a hint
+    // Not in a dungeon — give a hint
     if (message.content.trim().length > 2) {
       await message.reply({
-        content: '🏠 You\'re in the hub. Use `/delve` to start a dungeon run.',
+        content: isDm
+          ? '🏠 You\'re in the hub. Start with `/delve`, then send your actions here in DM.'
+          : '🏠 You\'re in the hub. Use `/delve` to start a dungeon run.',
         allowedMentions: { repliedUser: false },
       });
     }
