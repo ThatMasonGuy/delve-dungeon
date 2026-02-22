@@ -22,6 +22,7 @@ export const config = {
     gameChannelIds: channelIds.length > 0 ? channelIds : (process.env.GAME_CHANNEL_ID ? [process.env.GAME_CHANNEL_ID] : []),
     allowDmGameplay: process.env.ALLOW_DM_GAMEPLAY === 'true',
     registerGlobalCommands: process.env.REGISTER_GLOBAL_COMMANDS !== 'false',
+    broadcastOwnerId: process.env.BROADCAST_OWNER_ID || null,
   },
 
   // OpenAI

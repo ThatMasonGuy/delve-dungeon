@@ -54,7 +54,7 @@ client.once(Events.ClientReady, (c) => {
   console.log(`[DELVE] Logged in as ${c.user.tag}`);
   const channelScope = config.discord.gameChannelIds.length > 0
     ? config.discord.gameChannelIds.join(', ')
-    : (config.discord.gameChannelId || 'all channels');
+    : 'none configured (server channel gameplay disabled until setup)';
   console.log(`[DELVE] Watching game channels: ${channelScope}`);
   console.log(`[DELVE] DM gameplay: ${config.discord.allowDmGameplay ? 'enabled' : 'disabled'}`);
   console.log(`[DELVE] Ready.`);
@@ -129,9 +129,8 @@ client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
 
   const isDm = message.guildId == null;
-  const inAllowedChannel = config.discord.gameChannelIds.length === 0
-    ? !isDm
-    : config.discord.gameChannelIds.includes(message.channelId);
+  const hasConfiguredGameChannels = config.discord.gameChannelIds.length > 0;
+  const inAllowedChannel = hasConfiguredGameChannels && config.discord.gameChannelIds.includes(message.channelId);
 
   if (isDm && config.discord.allowDmGameplay) {
     await handleGameMessage(message, client);
