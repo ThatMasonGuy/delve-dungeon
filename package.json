@@ -1,0 +1,20 @@
+{
+  "name": "ai-adventure",
+  "version": "0.1.0",
+  "description": "AI-powered dungeon crawler Discord bot",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "db:init": "node src/db/init.js",
+    "db:seed": "node src/db/seed.js",
+    "db:reset": "node src/db/reset.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.0",
+    "dotenv": "^16.4.0",
+    "openai": "^4.70.0",
+    "better-sqlite3": "^11.7.0"
+  }
+}
