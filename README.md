@@ -145,12 +145,12 @@ On startup the bot registers slash commands, connects to Discord, and is ready t
 
 ### Getting Started
 
-1. Create a character with `/create`. You'll receive a set of randomly rolled stats (3d6 each).
+1. Create a character with `/characters` by selecting an empty slot. You'll receive a set of randomly rolled stats (3d6 each).
 2. Browse available dungeons with `/dungeons`.
 3. Enter a dungeon with `/delve`. This costs a small gold entry fee.
 4. Head to any configured game channel (or DM the bot if enabled) and start typing actions.
 
-If someone DMs the bot before creating a character, Delve now replies with a quick start checklist (`/create` → `/dungeons` → `/delve`).
+If someone DMs the bot before creating a character, Delve now replies with a quick start checklist (`/characters` → `/dungeons` → `/delve`).
 
 ### Playing
 
@@ -184,8 +184,7 @@ The bot will:
 
 | Command | Description |
 |---|---|
-| `/create` | Create a new character with rolled stats |
-| `/characters` | View and switch between your character slots (3 per user) |
+| `/characters` | Create, view, and switch between your character slots (3 per user) |
 | `/delve` | Enter a dungeon (costs gold) |
 | `/status` | View current run progress, floor, and room |
 | `/stats` | View your character's stats, skills, and current skill bonuses |

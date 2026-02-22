@@ -60,7 +60,7 @@ export async function handleGameMessage(message, client) {
         content: [
           '👋 Welcome to **Delve**!',
           'To get started:',
-          '1) Use `/create` to make your character.',
+          '1) Use `/characters` and pick an empty slot to create your character.',
           '2) Use `/dungeons` to browse available dungeons.',
           '3) Use `/delve` to begin a run, then type natural actions like `search room` or `attack skeleton`.',
           'Need guidance? Type `/help` or `/help overview`.',
