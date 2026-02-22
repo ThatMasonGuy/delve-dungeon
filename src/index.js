@@ -2,7 +2,7 @@
 // DELVE — Discord Bot Entry Point
 // ═══════════════════════════════════════════════════════════════
 
-import { Client, GatewayIntentBits, Partials, Collection, Events } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Collection, Events, MessageFlags } from 'discord.js';
 import { config } from './config.js';
 import { initDb, applySchema, closeDb } from './db/index.js';
 import { seedAll } from './db/seed.js';
@@ -71,7 +71,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await command.handleComponent(interaction);
       } catch (error) {
         console.error(`[CMD] Error handling component ${interaction.customId}:`, error);
-        const reply = { content: '⚠️ Something went wrong.', ephemeral: true };
+        const reply = { content: '⚠️ Something went wrong.', flags: MessageFlags.Ephemeral };
         if (interaction.replied || interaction.deferred) {
           await interaction.followUp(reply).catch(() => {});
         } else {
@@ -91,7 +91,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await command.handleModal(interaction);
       } catch (error) {
         console.error(`[CMD] Error handling modal ${interaction.customId}:`, error);
-        const reply = { content: '⚠️ Something went wrong.', ephemeral: true };
+        const reply = { content: '⚠️ Something went wrong.', flags: MessageFlags.Ephemeral };
         if (interaction.replied || interaction.deferred) {
           await interaction.followUp(reply).catch(() => {});
         } else {
@@ -114,7 +114,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await command.execute(interaction);
   } catch (error) {
     console.error(`[CMD] Error executing ${interaction.commandName}:`, error);
-    const reply = { content: '⚠️ Something went wrong processing that command.', ephemeral: true };
+    const reply = { content: '⚠️ Something went wrong processing that command.', flags: MessageFlags.Ephemeral };
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp(reply).catch(() => {});
     } else {

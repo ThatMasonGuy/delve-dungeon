@@ -53,7 +53,13 @@ export default {
       });
     }
 
-    const guild = interaction.guild || await interaction.client.guilds.fetch(interaction.guildId);
+    const guild = interaction.guild;
+    if (!guild) {
+      return interaction.reply({
+        content: 'Could not resolve this server context. Please run `/setup` directly in a server text channel.',
+        flags: MessageFlags.Ephemeral,
+      });
+    }
 
     const hasPerm = interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild);
     if (!hasPerm) {
