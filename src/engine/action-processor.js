@@ -792,10 +792,19 @@ async function processSearch(result, run, player, baseStats, skills, currentRoom
   result.diceResults.push(check);
 
   if (check.passed) {
-    const loot = resolveLoot('room_drop', dungeon.id, {
-      perceptionLevel: skills.perception?.level || 1,
-    });
-    result.lootDrops.push(...loot);
+    // Not every room has something to find. Treasure rooms always do; standard rooms ~55% of the time.
+    // This breaks the "enter → search → move" loop by making exploration less predictable.
+    const isTreasureRoom = currentRoom.chest != null;
+    const roomHasLoot = isTreasureRoom || Math.random() < 0.55;
+
+    if (roomHasLoot) {
+      const loot = resolveLoot('room_drop', dungeon.id, {
+        perceptionLevel: skills.perception?.level || 1,
+      });
+      result.lootDrops.push(...loot);
+    } else {
+      result.roomEmptyOnSearch = true;
+    }
     currentRoom.is_searched = true;
   }
 

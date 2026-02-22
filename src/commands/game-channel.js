@@ -10,6 +10,7 @@ import { queries, queryOne, execute } from '../db/index.js';
 import { processAction } from '../engine/action-processor.js';
 import { getCurrentRoom } from '../engine/floor-generator.js';
 import { narrateAction } from '../ai/narrator.js';
+import { buildHelpEmbed } from './help.js';
 import {
   diceEmbed,
   combatEmbed,
@@ -38,6 +39,17 @@ const processing = new Set();
  */
 export async function handleGameMessage(message, client) {
   const discordId = message.author.id;
+
+  // ./help [topic] — works anywhere in the game channel, dungeon or hub
+  const helpMatch = message.content.trim().match(/^\.\/help\s*(.*)$/i);
+  if (helpMatch) {
+    const topic = (helpMatch[1] || '').trim();
+    const embed = buildHelpEmbed(topic);
+    return message.reply({
+      embeds: [embed],
+      allowedMentions: { repliedUser: false },
+    });
+  }
 
   // Check if player exists
   const player = queries.getPlayerByDiscordId(discordId);
@@ -82,6 +94,17 @@ export async function handleGameMessage(message, client) {
     // Quick responses that don't need AI
     if (result.roomAlreadySearched) {
       narrativeText = '*You\'ve already searched this room thoroughly. Nothing new to find here.*';
+    }
+
+    // Room is genuinely empty after a search
+    if (result.roomEmptyOnSearch) {
+      const emptyMessages = [
+        '*You search the room carefully — dust, stone, nothing more. This place has nothing to offer.*',
+        '*You turn the room over looking for something useful. There\'s nothing here worth taking.*',
+        '*A thorough search turns up nothing. The room is empty.*',
+        '*Despite your best efforts, the room yields nothing of value. Some rooms just aren\'t worth the time.*',
+      ];
+      narrativeText = emptyMessages[Math.floor(Math.random() * emptyMessages.length)];
     }
 
     // Locked door feedback
