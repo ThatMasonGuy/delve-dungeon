@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { queryAll } from '../db/index.js';
 import { config } from '../config.js';
 
@@ -19,22 +19,25 @@ export default {
     if (!ownerId) {
       return interaction.reply({
         content: 'Broadcast owner ID is not configured. Set `BROADCAST_OWNER_ID` in env.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
     if (interaction.user.id !== ownerId) {
-      return interaction.reply({ content: 'You are not allowed to use `/broadcast`.', ephemeral: true });
+      return interaction.reply({
+        content: 'You are not allowed to use `/broadcast`.',
+        flags: MessageFlags.Ephemeral,
+      });
     }
 
     const text = interaction.options.getString('message', true).trim();
     if (text.length < 5) {
-      return interaction.reply({ content: 'Message is too short.', ephemeral: true });
+      return interaction.reply({ content: 'Message is too short.', flags: MessageFlags.Ephemeral });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const recipients = queryAll('SELECT DISTINCT discord_id FROM players WHERE discord_id IS NOT NULL AND discord_id != ""');
+    const recipients = queryAll("SELECT DISTINCT discord_id FROM players WHERE discord_id IS NOT NULL AND discord_id != ''");
 
     let sent = 0;
     let failed = 0;

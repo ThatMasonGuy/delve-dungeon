@@ -3,6 +3,7 @@ import {
   ChannelType,
   PermissionFlagsBits,
   PermissionsBitField,
+  MessageFlags,
 } from 'discord.js';
 
 const DEFAULT_CHANNEL_NAME = 'delve-adventures';
@@ -45,16 +46,24 @@ export default {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   async execute(interaction) {
-    if (!interaction.guild) {
-      return interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
+    if (!interaction.inGuild() || !interaction.guildId) {
+      return interaction.reply({
+        content: 'This command can only be used in a server.',
+        flags: MessageFlags.Ephemeral,
+      });
     }
+
+    const guild = interaction.guild || await interaction.client.guilds.fetch(interaction.guildId);
 
     const hasPerm = interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild);
     if (!hasPerm) {
-      return interaction.reply({ content: 'You need **Manage Server** permission to run `/setup`.', ephemeral: true });
+      return interaction.reply({
+        content: 'You need **Manage Server** permission to run `/setup`.',
+        flags: MessageFlags.Ephemeral,
+      });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const channelName = (interaction.options.getString('channel_name') || DEFAULT_CHANNEL_NAME)
       .toLowerCase()
@@ -63,17 +72,17 @@ export default {
       .replace(/^-|-$/g, '')
       .slice(0, 100) || DEFAULT_CHANNEL_NAME;
 
-    const existing = interaction.guild.channels.cache.find(
+    const existing = guild.channels.cache.find(
       c => c.type === ChannelType.GuildText && c.name === channelName
     );
 
-    const channel = existing || await interaction.guild.channels.create({
+    const channel = existing || await guild.channels.create({
       name: channelName,
       type: ChannelType.GuildText,
       topic: 'Delve Dungeon playtest info. DM the bot to play.',
     });
 
-    const botMember = await interaction.guild.members.fetchMe();
+    const botMember = await guild.members.fetchMe();
 
     // Ensure the bot can post even in least-privilege servers before we lock down @everyone.
     await channel.permissionOverwrites.edit(botMember.id, {
@@ -84,7 +93,7 @@ export default {
 
     await channel.send(SERVER_INTRO_MESSAGE);
 
-    await channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, {
+    await channel.permissionOverwrites.edit(guild.roles.everyone.id, {
       ViewChannel: true,
       SendMessages: false,
     });
