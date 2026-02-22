@@ -24,7 +24,7 @@ function getClient() {
 
 // ──────── SYSTEM PROMPT ────────
 
-function buildSystemPrompt(dungeon, currentRoom, player, baseStats, equippedItems, inventory) {
+function buildSystemPrompt(dungeon, currentRoom, player, baseStats, equippedItems, inventory, runStats) {
   // Build inventory summary for AI awareness
   const invSummary = (inventory && inventory.length > 0)
     ? inventory.map(i => `${i.item_name}${i.quantity > 1 ? ` x${i.quantity}` : ''}${i.is_equipped ? ' [equipped]' : ''}`).join(', ')
@@ -33,6 +33,13 @@ function buildSystemPrompt(dungeon, currentRoom, player, baseStats, equippedItem
   const eqSummary = (equippedItems && equippedItems.length > 0)
     ? equippedItems.map(i => `${i.item_name} (${i.subtype})`).join(', ')
     : 'Nothing equipped (bare fists)';
+
+  // Build active buff summary so AI never forgets persistent states
+  const activeBuffs = [];
+  if (runStats?.torch_lit) activeBuffs.push('Torch lit (+3 Perception) — the player IS carrying a lit torch this entire run');
+  if (runStats?.fungus_lit) activeBuffs.push('Glowing Fungus active (+1 Perception)');
+  if (runStats?.status_effects?.some(e => e.type === 'poison')) activeBuffs.push('POISONED — venom courses through their veins');
+  const buffSummary = activeBuffs.length > 0 ? activeBuffs.join('; ') : 'None';
 
   return `${dungeon.ai_context_seed}
 
@@ -45,16 +52,17 @@ HARD RULES (never break these):
 3. NEVER tell exact numbers (HP, damage, dice values) — embeds handle that.
 4. When mechanical results say "ITEMS FOUND", narrate discovering those EXACT items by name. If they found "Glowing Fungus", describe a glowing fungus — not an urn or relic you invented.
 5. If the engine didn't move the player to a new room, they are STILL in the same room. Don't narrate them walking somewhere new.
+6. CRITICAL: Active Buffs below are PERSISTENT facts about this run. If the torch is lit, the player HAS a lit torch — NEVER narrate them being without light or lacking a torch.
 
 STORYTELLING RULES:
-6. Second person present tense. Be vivid, atmospheric, and immersive.
-7. 2-3 paragraphs. Describe the environment, the sounds, the smells, the feeling of the place. Paint a picture.
-8. When entering a NEW room, describe it fresh — atmosphere, threats, features, exits. Make each room feel distinct.
-9. Describe combat viscerally — the clash of steel, the crunch of bone, the spray of ichor.
-10. Critical success = legendary moment. Critical failure = memorable and darkly funny.
-11. Partial success = "yes, but..." — success at a cost.
-12. End with a subtle narrative hook woven into the description. Never literally ask "What do you do?"
-13. IMPORTANT: The player is in Room ${currentRoom?.room_number || '?'} on FLOOR ${player._currentFloor || '?'}. Each floor is a completely different level of the dungeon with its own rooms. Floor 2 Room 1 is NOT the same place as Floor 1 Room 1 — describe it as a new, deeper area.
+7. Second person present tense. Be vivid, atmospheric, and immersive.
+8. 2-3 paragraphs. Describe the environment, the sounds, the smells, the feeling of the place. Paint a picture.
+9. When entering a NEW room, describe it fresh — atmosphere, threats, features, exits. Make each room feel distinct.
+10. Describe combat viscerally — the clash of steel, the crunch of bone, the spray of ichor.
+11. Critical success = legendary moment. Critical failure = memorable and darkly funny.
+12. Partial success = "yes, but..." — success at a cost.
+13. End with a subtle narrative hook woven into the description. Never literally ask "What do you do?"
+14. IMPORTANT: The player is in Room ${currentRoom?.room_number || '?'} on FLOOR ${player._currentFloor || '?'}. Each floor is a completely different level of the dungeon with its own rooms. Floor 2 Room 1 is NOT the same place as Floor 1 Room 1 — describe it as a new, deeper area.
 
 ═══ CURRENT PLAYER ═══
 Name: ${player.character_name || player.username}
@@ -62,10 +70,11 @@ HP: ${player.hp_current}/${player.hp_max}
 Gold: ${player.gold}g
 Stats: STR ${baseStats?.strength || '?'} DEX ${baseStats?.dexterity || '?'} CON ${baseStats?.constitution || '?'} INT ${baseStats?.intelligence || '?'} WIS ${baseStats?.wisdom || '?'} CHA ${baseStats?.charisma || '?'}
 Equipped: ${eqSummary}
-Inventory: ${invSummary}`;
+Inventory: ${invSummary}
+Active Buffs/States: ${buffSummary}`;
 }
 
-function buildRoomContext(currentRoom, roomState, floorNumber) {
+function buildRoomContext(currentRoom, roomState, floorNumber, floorMap) {
   if (!currentRoom) return 'Room data unavailable.';
 
   const parts = [`═══ CURRENT LOCATION: FLOOR ${floorNumber || '?'}, ROOM ${currentRoom.room_number} (${currentRoom.type}) ═══`];
@@ -128,6 +137,22 @@ function buildRoomContext(currentRoom, roomState, floorNumber) {
   // Connections
   if (currentRoom.connections?.length > 0) {
     parts.push(`\nExits: rooms ${currentRoom.connections.join(', ')}`);
+  }
+
+  // Boss room adjacent warning — if any connected room is the boss room, telegraph it
+  if (floorMap && currentRoom.connections?.length > 0) {
+    const hasBossAdjacent = currentRoom.connections.some(connNum => {
+      const connRoom = floorMap.rooms?.find(r => r.room_number === connNum);
+      return connRoom?.is_boss_room;
+    });
+    if (hasBossAdjacent) {
+      parts.push('\n⚠️ BOSS ROOM ADJACENT: A connected passage radiates a palpable, oppressive dread. Something ancient and powerful waits beyond it. Weave an ominous atmospheric hint into your narration — a distant rumble, unnatural cold, the sound of heavy armour, a foul smell — but do NOT name or describe the boss directly. Let the player sense the danger and choose whether to proceed.');
+    }
+  }
+
+  // Boss room itself — set the scene before combat
+  if (currentRoom.is_boss_room) {
+    parts.push('\n⚠️ BOSS ROOM ENTERED: The player has just stepped into the final chamber. The boss is present. Describe the chamber with dread and grandeur — the player should feel the weight of what awaits. The boss has NOT yet attacked this round (player gets first action). Describe the enemy imposingly but do not narrate an attack yet.');
   }
 
   // Combat state
@@ -278,11 +303,15 @@ export async function narrateRoomEntry(dungeon, room, player, floorNumber, roomN
   const baseStats = queries.getBaseStats(player.id) || {};
   const equippedItems = queries.getEquippedItems(player.id) || [];
   const inventory = queries.getInventory(player.id) || [];
+  const activeRun = queries.getActiveRun(player.id);
+  const runStats = activeRun?.run_stats || {};
+  const floorMapRow = activeRun ? queries.getFloorMap(activeRun.id, floorNumber) : null;
+  const floorMap = floorMapRow?.floor_map || null;
 
   player._currentFloor = floorNumber;
 
-  const systemPrompt = buildSystemPrompt(dungeon, room, player, baseStats, equippedItems, inventory);
-  const roomContext = buildRoomContext(room, { enemies: room.enemies || [] });
+  const systemPrompt = buildSystemPrompt(dungeon, room, player, baseStats, equippedItems, inventory, runStats);
+  const roomContext = buildRoomContext(room, { enemies: room.enemies || [] }, floorNumber, floorMap);
 
   const isNewFloor = floorNumber > 1;
   const isFinalFloor = floorNumber === dungeon.floor_count;
@@ -313,11 +342,14 @@ export async function narrateAction({ actionText, result, dungeon, currentRoom, 
   const equippedItems = dbQueries.getEquippedItems(player.id) || [];
   const inventory = dbQueries.getInventory(player.id) || [];
   const run = dbQueries.getActiveRun(player.id);
+  const runStats = run?.run_stats || {};
+  const floorMapRow = run ? dbQueries.getFloorMap(run.id, run.current_floor) : null;
+  const floorMap = floorMapRow?.floor_map || null;
 
   player._currentFloor = run?.current_floor || 1;
 
-  const systemPrompt = buildSystemPrompt(dungeon, currentRoom, player, baseStats, equippedItems, inventory);
-  const roomContext = buildRoomContext(currentRoom, roomState, run?.current_floor || 1);
+  const systemPrompt = buildSystemPrompt(dungeon, currentRoom, player, baseStats, equippedItems, inventory, runStats);
+  const roomContext = buildRoomContext(currentRoom, roomState, run?.current_floor || 1, floorMap);
   const mechanicalContext = buildMechanicalContext(result);
   const history = buildConversationHistory(aiContext);
 

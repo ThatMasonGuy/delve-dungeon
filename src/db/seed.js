@@ -302,8 +302,8 @@ function seedEnemies() {
     {
       name: 'The Hollow Warden', description: 'A towering armored revenant bound to guard the crypt.',
       lore_text: 'Once the captain of the crypt guard, the Warden was cursed to defend these halls for eternity. His armor has fused to his bones.',
-      base_hp: 80, base_damage: 14, base_armor: 8,
-      stat_scaling: JSON.stringify({ hp_per_tier: 1.4, damage_per_tier: 1.2, armor_per_tier: 1.15 }),
+      base_hp: 70, base_damage: 12, base_armor: 6,
+      stat_scaling: JSON.stringify({ hp_per_tier: 1.3, damage_per_tier: 1.15, armor_per_tier: 1.1 }),
       abilities: JSON.stringify([
         { name: 'Warden\'s Cleave', effect_type: 'damage', damage_type: 'slashing', targeting_shape: 'single',
           check_type: 'melee', base_dc: 14, damage_multiplier: 1.5, trigger_condition: { type: 'always' } },
@@ -319,7 +319,7 @@ function seedEnemies() {
           effect_value: { type: 'apply_status', status: 'silence', duration_actions: 2 },
           trigger_condition: { type: 'hp_threshold_below', value: 0.5 }, max_charges: 1 },
       ]),
-      resistances: JSON.stringify({ slashing: 0.7, piercing: 0.5, necrotic: 0.0 }),
+      resistances: JSON.stringify({ slashing: 0.85, piercing: 0.75, necrotic: 0.0 }),
       weaknesses: JSON.stringify({ radiant: 2.0, blunt: 1.3 }),
       effect_immunities: JSON.stringify(['poison', 'bleed', 'stun']),
       is_boss: 1, xp_reward: 75, gold_reward_min: 25, gold_reward_max: 50,

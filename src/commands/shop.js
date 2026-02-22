@@ -18,7 +18,7 @@ const POTION_SHOP = {
   emoji: '🧪',
   description: 'Potions, tools, and provisions for the road ahead.',
   items: [
-    { itemName: 'Health Potion', price: 15, emoji: '❤️', desc: 'Heals 20 HP' },
+    { itemName: 'Health Potion', price: 15, emoji: '❤️', desc: 'Heals 10–20 HP' },
     { itemName: 'Antidote', price: 18, emoji: '🟢', desc: 'Cures poison' },
     { itemName: 'Torch', price: 5, emoji: '🔥', desc: '+3 Perception while lit' },
     { itemName: "Thieves' Pick", price: 12, emoji: '🔧', desc: 'Lockpicking tool' },
@@ -188,9 +188,64 @@ export default {
 
       const newGold = currentPlayer.gold - shopItem.price;
 
+      // Acknowledge the purchase ephemerally
       await i.reply({
         content: `${shopItem.emoji} Purchased **${shopItem.itemName}** for **${shopItem.price}g**. 💰 ${newGold}g remaining.`,
+        ephemeral: true,
       });
+
+      // Rebuild and update the shop message so the dropdown resets (allows repeat purchases)
+      // and gold display stays current
+      const refreshedPlayer = queries.getPlayerByDiscordId(discordId);
+      const refreshedPotionEmbed = new EmbedBuilder()
+        .setColor(C.gold)
+        .setTitle(`${POTION_SHOP.emoji} ${POTION_SHOP.name}`)
+        .setDescription(
+          `${POTION_SHOP.description}\n💰 **${refreshedPlayer.gold}g** available\n\n` +
+          POTION_SHOP.items.map(it => `${it.emoji} **${it.itemName}** — ${it.price}g\n-# ${it.desc}`).join('\n')
+        );
+
+      const refreshedPotionMenu = new StringSelectMenuBuilder()
+        .setCustomId('shop_potion')
+        .setPlaceholder('Buy from The Cauldron...')
+        .addOptions(
+          POTION_SHOP.items.map(it => ({
+            label: `${it.itemName} — ${it.price}g`,
+            description: it.desc,
+            value: it.itemName,
+            emoji: it.emoji,
+          }))
+        );
+
+      const refreshedEmbeds = [refreshedPotionEmbed];
+      const refreshedComponents = [new ActionRowBuilder().addComponents(refreshedPotionMenu)];
+
+      if (trophyItems.length > 0) {
+        const refreshedTrophyEmbed = new EmbedBuilder()
+          .setColor(C.gold)
+          .setTitle('🏆 Hall of Conquests')
+          .setDescription(
+            `Spoils from conquered dungeons.\n💰 **${refreshedPlayer.gold}g** available\n\n` +
+            trophyItems.map(it => `${it.emoji} **${it.itemName}** — ${it.price}g\n-# ${it.desc}`).join('\n')
+          );
+        const refreshedTrophyMenu = new StringSelectMenuBuilder()
+          .setCustomId('shop_trophy')
+          .setPlaceholder('Buy from Hall of Conquests...')
+          .addOptions(
+            trophyItems.map(it => ({
+              label: `${it.itemName} — ${it.price}g`,
+              description: it.desc,
+              value: it.itemName,
+              emoji: it.emoji,
+            }))
+          );
+        refreshedEmbeds.push(refreshedTrophyEmbed);
+        refreshedComponents.push(new ActionRowBuilder().addComponents(refreshedTrophyMenu));
+      } else {
+        refreshedEmbeds.push(trophyEmbed);
+      }
+
+      await interaction.editReply({ embeds: refreshedEmbeds, components: refreshedComponents }).catch(() => {});
     });
 
     collector.on('end', () => {

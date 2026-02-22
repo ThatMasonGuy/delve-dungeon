@@ -240,6 +240,10 @@ export async function processAction(playerId, actionText) {
         await processFlee(result, run, player, baseStats, skills, currentRoom);
         break;
 
+      case 'unequip':
+        processUnequip(result, intent, player, equippedItems);
+        break;
+
       case 'interact':
       case 'general':
       default:
@@ -249,7 +253,8 @@ export async function processAction(playerId, actionText) {
     }
 
     // ── Enemy turns (if in combat and player didn't die) ──
-    if (run.room_state.is_combat_active && !result.playerDied && intent.type !== 'flee') {
+    // Skip enemy turns on the round the player enters a boss room — they get to act first
+    if (run.room_state.is_combat_active && !result.playerDied && intent.type !== 'flee' && !result.bossRoomEntered) {
       for (const enemy of run.room_state.enemies) {
         if (enemy.is_dead) continue;
         const enemyResult = processEnemyTurn(enemy, player, baseStats, equippedItems);
@@ -375,7 +380,19 @@ function classifyIntent(actionText, currentRoom, roomState) {
 
   // Combat actions
   if (roomState.is_combat_active) {
-    if (/\b(attack|strike|hit|slash|stab|swing|shoot|fire|cast|smash|bash|punch|kick)\b/.test(text)) {
+    // Detect "unequip [weapon] and attack" — must be handled before generic attack check
+    const hasUnequip = /\b(unequip|remove|put away|set aside|sheathe|holster|drop)\b/.test(text);
+    const hasAttack = /\b(attack|strike|hit|slash|stab|swing|shoot|fire|cast|smash|bash|punch|kick|charge|rush|lunge|leap|thrust|drive)\b/.test(text);
+
+    if (hasUnequip && hasAttack) {
+      // Combined: unequip first, then melee attack
+      const targetEnemy = findTargetEnemy(text, roomState.enemies);
+      return { type: 'attack', target: targetEnemy, unequipFirst: true, raw: text };
+    }
+    if (hasUnequip && !hasAttack) {
+      return { type: 'unequip', raw: text };
+    }
+    if (hasAttack) {
       // Try to identify target
       const targetEnemy = findTargetEnemy(text, roomState.enemies);
       return { type: 'attack', target: targetEnemy, raw: text };
@@ -383,7 +400,10 @@ function classifyIntent(actionText, currentRoom, roomState) {
     if (/\b(flee|run|escape|retreat)\b/.test(text)) {
       return { type: 'flee', raw: text };
     }
-    if (/\b(use|drink|consume|eat|apply)\b/.test(text)) {
+    // Only trigger use_item if there's a clear item keyword — prevent roleplay phrases like
+    // "I use the blood as war paint" from being parsed as inventory commands
+    if (/\b(use|drink|consume|eat|apply|chug|down|swallow|quaff)\b/.test(text) &&
+        /\b(potion|health|antidote|torch|pick|lockpick|fungus|mushroom|scroll|item|cure|heal)\b/.test(text)) {
       return { type: 'use_item', raw: text };
     }
   }
@@ -394,7 +414,15 @@ function classifyIntent(actionText, currentRoom, roomState) {
     const roomMatch = text.match(/room\s*(\d+)/i) || text.match(/(\d+)/);
     return { type: 'move', targetRoom: roomMatch ? parseInt(roomMatch[1]) : null, raw: text };
   }
-  if (/\b(next room|go forward|go forwards|go ahead|go on|continue|proceed|advance|press on|keep going|move on|move forward|move forwards|move ahead|head forward|head forwards|head ahead|head on|head out|head deeper|onwards|onward|deeper|go deeper|push on|push forward|push forwards|carry on|lets go|let's go|lets move|let's move|head to the next|move to the next|go to the next|I press on)\b/i.test(text)) {
+  // Explicit room number with any movement context (handles Yoda-speak "Room 4 we go" and typos like "more on to room 4")
+  if (/\broom\s*(\d+)\b/i.test(text)) {
+    const roomMatch = text.match(/room\s*(\d+)/i);
+    // Accept if there's any vague movement word or intent nearby (including "let's", "we", "time")
+    if (/\b(go|move|head|press|push|let'?s|we|proceed|on|to|into|forward|time|next|will|gonna|going)\b/i.test(text)) {
+      return { type: 'move', targetRoom: roomMatch ? parseInt(roomMatch[1]) : null, raw: text };
+    }
+  }
+  if (/\b(next room|go forward|go forwards|go ahead|go on|continue|proceed|advance|press on|keep going|move on|move forward|move forwards|move ahead|head forward|head forwards|head ahead|head on|head out|head deeper|onwards|onward|deeper|go deeper|push on|push forward|push forwards|carry on|lets go|let's go|lets move|let's move|head to the next|move to the next|go to the next|I press on|move along|push ahead|keep moving|march on|forge ahead|venture forward|venture on|venture ahead|venture deeper)\b/i.test(text)) {
     return { type: 'move', targetRoom: null, raw: text }; // Next in sequence
   }
   // "pass through", "step through", "move beyond", "head back into" — allow words between verb and preposition
@@ -421,8 +449,8 @@ function classifyIntent(actionText, currentRoom, roomState) {
     return { type: 'search', raw: text };
   }
 
-  // Using items — "light torch", "drink potion", "use antidote", "hold fungus aloft"
-  if (/\b(use|drink|consume|eat|apply|equip|wear|wield|light|ignite|kindle)\b/.test(text) ||
+  // Using items — "light torch", "drink potion", "chug health potion", "use antidote", "hold fungus aloft"
+  if (/\b(use|drink|consume|eat|apply|equip|wear|wield|light|ignite|kindle|chug|down|swallow|quaff)\b/.test(text) ||
       (/\b(hold|raise|lift)\b/.test(text) && /\b(fungus|mushroom|shroom|torch|aloft)\b/.test(text))) {
     // Don't match "light" as in "the light" or "a light source"
     if (/\b(light|ignite|kindle)\b/.test(text) && /\b(torch|lantern|fire|flame|fungus|mushroom)\b/.test(text)) {
@@ -431,7 +459,7 @@ function classifyIntent(actionText, currentRoom, roomState) {
     if (/\b(hold|raise|lift)\b/.test(text) && /\b(fungus|mushroom|shroom|torch|aloft)\b/.test(text)) {
       return { type: 'use_item', raw: text };
     }
-    if (/\b(use|drink|consume|eat|apply)\b/.test(text)) {
+    if (/\b(use|drink|consume|eat|apply|chug|down|swallow|quaff)\b/.test(text)) {
       return { type: 'use_item', raw: text };
     }
   }
@@ -500,6 +528,55 @@ function findTargetEnemy(text, enemies) {
 
 // ──────── ACTION HANDLERS ────────
 
+/**
+ * Unequip a weapon or armor piece by name or type.
+ * Looks for ranged/weapon items in text and unequips them.
+ */
+function processUnequip(result, intent, player, equippedItems) {
+  const text = intent.raw.toLowerCase();
+
+  // Determine which item to unequip based on text hints
+  let toUnequip = null;
+
+  // Prefer explicit name match first
+  for (const item of equippedItems) {
+    const name = item.item_name.toLowerCase();
+    if (text.includes(name) || name.split(/\s+/).some(w => w.length >= 3 && text.includes(w))) {
+      toUnequip = item;
+      break;
+    }
+  }
+
+  // Fallback: keyword-based type matching
+  if (!toUnequip) {
+    if (/\b(bow|ranged|arrows?|crossbow)\b/.test(text)) {
+      toUnequip = equippedItems.find(i => i.subtype === 'ranged');
+    } else if (/\b(sword|blade|dagger|knife|axe|mace|club|staff|wand|weapon|melee)\b/.test(text)) {
+      toUnequip = equippedItems.find(i => i.item_type === 'weapon');
+    } else if (/\b(shield|buckler)\b/.test(text)) {
+      toUnequip = equippedItems.find(i => i.subtype === 'shield');
+    } else if (/\b(armor|vest|chainmail|chest)\b/.test(text)) {
+      toUnequip = equippedItems.find(i => i.item_type === 'armor' && i.subtype !== 'shield');
+    }
+  }
+
+  if (!toUnequip) {
+    // Nothing explicit — unequip the main hand weapon if any
+    toUnequip = equippedItems.find(i => i.item_type === 'weapon');
+  }
+
+  if (toUnequip) {
+    execute(`UPDATE player_inventory SET is_equipped = 0 WHERE id = ?`, [toUnequip.id]);
+    result.unequippedItem = toUnequip.item_name;
+    // Remove from in-memory equippedItems array so subsequent attack uses correct weapon
+    const idx = equippedItems.findIndex(i => i.id === toUnequip.id);
+    if (idx !== -1) equippedItems.splice(idx, 1);
+    console.log(`[UNEQUIP] Unequipped ${toUnequip.item_name}`);
+  } else {
+    result.nothingToUnequip = true;
+  }
+}
+
 async function processAttack(result, intent, run, player, baseStats, skills, equippedItems, currentRoom, dungeon) {
   const target = intent.target || run.room_state.enemies.find(e => !e.is_dead);
   if (!target) {
@@ -511,6 +588,11 @@ async function processAttack(result, intent, run, player, baseStats, skills, equ
   if (!run.room_state.is_combat_active) {
     run.room_state.is_combat_active = true;
     run.room_state.round_number = 1;
+  }
+
+  // Handle combined "unequip + attack" — unequip first so weapon type is correct
+  if (intent.unequipFirst) {
+    processUnequip(result, intent, player, equippedItems);
   }
 
   // Determine weapon type and skill
@@ -1027,6 +1109,11 @@ async function processMove(result, intent, run, player, floorMap, dungeon, playe
     run.room_state.round_number = 1;
   }
 
+  // Flag boss room entry so enemies don't get a free first strike
+  if (targetRoom.is_boss_room) {
+    result.bossRoomEntered = true;
+  }
+
   // Auto-trigger trap check on room entry
   if (targetRoom.trap && !targetRoom.trap.is_triggered && !targetRoom.trap.is_disarmed) {
     const trapCheck = skillCheck({
@@ -1103,14 +1190,28 @@ async function processFlee(result, run, player, baseStats, skills, currentRoom) 
   if (check.passed) {
     // End combat, player can move
     run.room_state.is_combat_active = false;
-    // Take a hit from each enemy as opportunity attacks
-    for (const enemy of run.room_state.enemies) {
-      if (!enemy.is_dead) {
-        const oppAttack = Math.round(enemy.damage * 0.5);
-        result.hpChange -= oppAttack;
-        result.updatedPlayerHp -= oppAttack;
+
+    // Opportunity attack damage scales with roll quality:
+    //   crit_success   → 0x  (clean escape, no damage)
+    //   success        → 0.25x  (glancing blow)
+    //   partial_success→ 0.5x  (grazing hit while fleeing)
+    const oppMultiplier =
+      check.outcome === 'crit_success' ? 0.0
+      : check.outcome === 'success' ? 0.25
+      : 0.5;
+
+    if (oppMultiplier > 0) {
+      for (const enemy of run.room_state.enemies) {
+        if (!enemy.is_dead) {
+          const oppAttack = Math.round(enemy.damage * oppMultiplier);
+          result.hpChange -= oppAttack;
+          result.updatedPlayerHp -= oppAttack;
+        }
       }
     }
+
+    result.fleeSuccess = true;
+    result.fleeOutcome = check.outcome;
   }
   // If failed, combat continues and enemies get their turns
 }
