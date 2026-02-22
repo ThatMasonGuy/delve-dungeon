@@ -2,7 +2,7 @@
 // DELVE — Discord Bot Entry Point
 // ═══════════════════════════════════════════════════════════════
 
-import { Client, GatewayIntentBits, Partials, Collection, Events } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Collection, Events, MessageFlags } from 'discord.js';
 import { config } from './config.js';
 import { initDb, applySchema, closeDb } from './db/index.js';
 import { seedAll } from './db/seed.js';
@@ -54,7 +54,7 @@ client.once(Events.ClientReady, (c) => {
   console.log(`[DELVE] Logged in as ${c.user.tag}`);
   const channelScope = config.discord.gameChannelIds.length > 0
     ? config.discord.gameChannelIds.join(', ')
-    : (config.discord.gameChannelId || 'all channels');
+    : 'none configured (server channel gameplay disabled until setup)';
   console.log(`[DELVE] Watching game channels: ${channelScope}`);
   console.log(`[DELVE] DM gameplay: ${config.discord.allowDmGameplay ? 'enabled' : 'disabled'}`);
   console.log(`[DELVE] Ready.`);
@@ -71,7 +71,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await command.handleComponent(interaction);
       } catch (error) {
         console.error(`[CMD] Error handling component ${interaction.customId}:`, error);
-        const reply = { content: '⚠️ Something went wrong.', ephemeral: true };
+        const reply = { content: '⚠️ Something went wrong.', flags: MessageFlags.Ephemeral };
         if (interaction.replied || interaction.deferred) {
           await interaction.followUp(reply).catch(() => {});
         } else {
@@ -91,7 +91,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await command.handleModal(interaction);
       } catch (error) {
         console.error(`[CMD] Error handling modal ${interaction.customId}:`, error);
-        const reply = { content: '⚠️ Something went wrong.', ephemeral: true };
+        const reply = { content: '⚠️ Something went wrong.', flags: MessageFlags.Ephemeral };
         if (interaction.replied || interaction.deferred) {
           await interaction.followUp(reply).catch(() => {});
         } else {
@@ -114,7 +114,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await command.execute(interaction);
   } catch (error) {
     console.error(`[CMD] Error executing ${interaction.commandName}:`, error);
-    const reply = { content: '⚠️ Something went wrong processing that command.', ephemeral: true };
+    const reply = { content: '⚠️ Something went wrong processing that command.', flags: MessageFlags.Ephemeral };
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp(reply).catch(() => {});
     } else {
@@ -129,9 +129,8 @@ client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
 
   const isDm = message.guildId == null;
-  const inAllowedChannel = config.discord.gameChannelIds.length === 0
-    ? !isDm
-    : config.discord.gameChannelIds.includes(message.channelId);
+  const hasConfiguredGameChannels = config.discord.gameChannelIds.length > 0;
+  const inAllowedChannel = hasConfiguredGameChannels && config.discord.gameChannelIds.includes(message.channelId);
 
   if (isDm && config.discord.allowDmGameplay) {
     await handleGameMessage(message, client);
