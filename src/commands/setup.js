@@ -71,21 +71,28 @@ export default {
       name: channelName,
       type: ChannelType.GuildText,
       topic: 'Delve Dungeon playtest info. DM the bot to play.',
-      permissionOverwrites: [
-        {
-          id: interaction.guild.roles.everyone.id,
-          deny: [PermissionFlagsBits.SendMessages],
-          allow: [PermissionFlagsBits.ViewChannel],
-        },
-      ],
+    });
+
+    const botMember = await interaction.guild.members.fetchMe();
+
+    // Ensure the bot can post even in least-privilege servers before we lock down @everyone.
+    await channel.permissionOverwrites.edit(botMember.id, {
+      ViewChannel: true,
+      SendMessages: true,
+      ReadMessageHistory: true,
     });
 
     await channel.send(SERVER_INTRO_MESSAGE);
 
+    await channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, {
+      ViewChannel: true,
+      SendMessages: false,
+    });
+
     await interaction.editReply(
       existing
-        ? `Posted setup message in existing channel <#${channel.id}>.`
-        : `Created <#${channel.id}>, restricted member posting, and posted setup instructions.`
+        ? `Posted setup message in existing channel <#${channel.id}> and locked member posting.`
+        : `Created <#${channel.id}>, posted setup instructions, and locked member posting.`
     );
   },
 };
