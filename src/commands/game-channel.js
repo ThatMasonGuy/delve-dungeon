@@ -30,6 +30,7 @@ import {
   unequipEmbed,
   fleeEmbed,
 } from './embeds.js';
+import { DM_WELCOME_MESSAGE } from './setup.js';
 
 // Track players currently being processed to prevent double-actions
 const processing = new Set();
@@ -57,14 +58,7 @@ export async function handleGameMessage(message, client) {
   if (!player) {
     if (isDm && message.content.trim().length > 0) {
       await message.reply({
-        content: [
-          '👋 Welcome to **Delve**!',
-          'To get started:',
-          '1) Use `/characters` and pick an empty slot to create your character.',
-          '2) Use `/dungeons` to browse available dungeons.',
-          '3) Use `/delve` to begin a run, then type natural actions like `search room` or `attack skeleton`.',
-          'Need guidance? Type `/help` or `/help overview`.',
-        ].join('\n'),
+        content: DM_WELCOME_MESSAGE,
         allowedMentions: { repliedUser: false },
       });
     }
